@@ -3,13 +3,23 @@
 
 FROM node:20-alpine
 
-# Sätt arbetskatalog
+# Sätt arbetskatalog för root dependencies
+WORKDIR /
+
+# Kopiera root package.json för globala dependencies (mysql2, dotenv, etc)
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Kopiera database module
+COPY database ./database
+
+# Sätt arbetskatalog för app
 WORKDIR /app
 
-# Kopiera package files
+# Kopiera web package files
 COPY web/package*.json ./
 
-# Installera dependencies
+# Installera web-specific dependencies
 RUN npm ci --only=production
 
 # Kopiera application kod
@@ -18,7 +28,9 @@ COPY web ./
 # Skapa user för säkerhet
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
-    chown -R nodejs:nodejs /app
+    chown -R nodejs:nodejs /app && \
+    chown -R nodejs:nodejs /database && \
+    chown -R nodejs:nodejs /node_modules
 
 USER nodejs
 
