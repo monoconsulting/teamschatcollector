@@ -47,8 +47,8 @@
 ## Task 1.1: Skapa projektets mappstruktur
 
 ### Subtask 1.1.1: Skapa root-struktur
-- [ ] Skapa projektets root-mapp: `teams-collector/`
-- [ ] Navigera till projektmappen
+- [x] Skapa projektets root-mapp: `teams-collector/`
+- [x] Navigera till projektmappen
 
 ```bash
 mkdir teams-collector
@@ -56,7 +56,7 @@ cd teams-collector
 ```
 
 ### Subtask 1.1.2: Skapa huvudmappar
-- [ ] Skapa följande mappar i root:
+- [x] Skapa följande mappar i root:
 
 ```bash
 mkdir -p playwright/scripts
@@ -86,7 +86,7 @@ mkdir -p docs
 - `docs/` - Dokumentation
 
 ### Subtask 1.1.3: Verifiera struktur
-- [ ] Lista alla skapade mappar:
+- [x] Lista alla skapade mappar:
 
 ```bash
 tree -L 2 -d
@@ -101,7 +101,7 @@ dir /s /b /ad
 ## Task 1.2: Initiera Node.js projekt
 
 ### Subtask 1.2.1: Skapa root package.json
-- [ ] Skapa `package.json` i projektets root:
+- [x] Skapa `package.json` i projektets root:
 
 ```json
 {
@@ -134,7 +134,7 @@ dir /s /b /ad
 ```
 
 ### Subtask 1.2.2: Installera dependencies
-- [ ] Kör npm install:
+- [x] Kör npm install:
 
 ```bash
 npm install
@@ -143,7 +143,7 @@ npm install
 **⚠️ OBS:** Om installationen misslyckas, kontrollera nätverksanslutning. FRÅGA innan du ändrar något i package.json.
 
 ### Subtask 1.2.3: Skapa web/package.json
-- [ ] Skapa separat `web/package.json` för API:
+- [x] Skapa separat `web/package.json` för API:
 
 ```json
 {
@@ -172,7 +172,7 @@ npm install
 ## Task 1.3: Skapa .env fil
 
 ### Subtask 1.3.1: Skapa .env i root
-- [ ] Skapa `.env` fil med EXAKT denna innehåll:
+- [x] Skapa `.env` fil med EXAKT denna innehåll:
 
 ```env
 # ---- Ports (ÄNDRA ALDRIG!) ----
@@ -212,11 +212,11 @@ PROFILE_LARGE_H=1080
 - Använd ALDRIG taskkill för att frigöra portar
 
 ### Subtask 1.3.2: Skapa .env.example
-- [ ] Kopiera .env till .env.example (utan känsliga lösenord)
-- [ ] Ersätt lösenord med "CHANGE_ME"
+- [x] Kopiera .env till .env.example (utan känsliga lösenord)
+- [x] Ersätt lösenord med "CHANGE_ME"
 
 ### Subtask 1.3.3: Lägg till .gitignore
-- [ ] Skapa `.gitignore`:
+- [x] Skapa `.gitignore`:
 
 ```gitignore
 # Environment
