@@ -5,7 +5,9 @@
       "Bash(git remote add:*)",
       "Bash(dir /s /b /ad)",
       "Bash(npm install)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nPhase 1: Complete project structure and basic setup\n\n- Created complete folder structure:\n  - playwright/ (scripts, recorded, utils)\n  - database/ (migrations)\n  - web/, scripts/, data/ (raw, video, trace)\n  - logs/, browser_context/, docs/\n- Set up root package.json with Playwright, MySQL, and dependencies\n- Set up web/package.json for Express API\n- Created .env.example with configuration template\n- Added .gitignore for sensitive files and artifacts\n- Added CLAUDE.md for AI agent guidance\n- Added PRD and implementation plan documentation\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
