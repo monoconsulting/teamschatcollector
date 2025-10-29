@@ -107,7 +107,7 @@ class BaseScraper {
             this.logger.info(`Navigating to ${teamsUrl}`);
 
             await this.page.goto(teamsUrl, {
-                waitUntil: 'networkidle',
+                waitUntil: 'domcontentloaded',
                 timeout: 90000
             });
 

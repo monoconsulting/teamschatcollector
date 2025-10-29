@@ -90,6 +90,26 @@ services:
       - teams_network
     # OBS: Exponera INTE portar för scraper om inte nödvändigt
 
+  # PhpMyAdmin for database management
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: teams_collector_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+      # Ingen autentisering för lokal utveckling
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "8080:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - teams_network
+
 volumes:
   db_data:
     driver: local

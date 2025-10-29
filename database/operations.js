@@ -63,7 +63,13 @@ async function updateScrapeRun(runId, data) {
 }
 
 /**
- * Sparar chat messages (batch insert)
+ * Sparar chat messages (batch upsert - idempotent)
+ *
+ * Använder INSERT ... ON DUPLICATE KEY UPDATE för att undvika dubbletter.
+ * Unikhetsnyckel baseras på: channel_name + timestamp + sender + message_text
+ *
+ * VIKTIGT: Denna metod är idempotent - samma meddelande kan skickas flera gånger
+ * utan att skapa dubbletter i databasen.
  */
 async function saveChatMessages(messages, scrapeRunId) {
     if (!messages || messages.length === 0) {
@@ -71,10 +77,18 @@ async function saveChatMessages(messages, scrapeRunId) {
     }
 
     const pool = getPool();
+
+    // Batch insert med ON DUPLICATE KEY UPDATE för idempotens
+    // Vi skapar en "fingerprint" för varje meddelande baserat på:
+    // channel_name + timestamp + sender + message_text
     const query = `
         INSERT INTO chat_messages
         (sender, message_text, timestamp, channel_name, thread_id, scrape_run_id, raw_json)
         VALUES ?
+        ON DUPLICATE KEY UPDATE
+            scrape_run_id = VALUES(scrape_run_id),
+            raw_json = VALUES(raw_json),
+            updated_at = CURRENT_TIMESTAMP
     `;
 
     const values = messages.map(msg => [
@@ -88,8 +102,29 @@ async function saveChatMessages(messages, scrapeRunId) {
     ]);
 
     const [result] = await pool.query(query, [values]);
-    console.log(`[DB] Saved ${result.affectedRows} messages for run ${scrapeRunId}`);
+    console.log(`[DB] Saved ${result.affectedRows} messages for run ${scrapeRunId} (${result.insertId ? 'new' : 'updated'})`);
     return result.affectedRows;
+}
+
+/**
+ * Hämtar senaste timestamp för en specifik chat
+ * Används för inkrementell insamling
+ */
+async function getLatestMessageTimestamp(channelName) {
+    const pool = getPool();
+    const query = `
+        SELECT MAX(timestamp) as last_timestamp
+        FROM chat_messages
+        WHERE channel_name = ? AND deleted_at IS NULL
+    `;
+
+    const [rows] = await pool.execute(query, [channelName]);
+
+    if (rows && rows[0] && rows[0].last_timestamp) {
+        return new Date(rows[0].last_timestamp);
+    }
+
+    return null;
 }
 
 /**
@@ -205,6 +240,7 @@ module.exports = {
     createScrapeRun,
     updateScrapeRun,
     saveChatMessages,
+    getLatestMessageTimestamp,
     softDeleteMessage,
     getMessages,
     searchMessages,
