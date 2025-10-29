@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teams Collector - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Teams Collector Dashboard</h1>
+            <p class="subtitle">Monitor scraping runs and browse collected messages</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="overview">Overview</button>
+            <button class="tab-button" data-tab="runs">Scrape Runs</button>
+            <button class="tab-button" data-tab="messages">Messages</button>
+            <button class="tab-button" data-tab="search">Search</button>
+        </nav>
+
+        <!-- Overview Tab -->
+        <div class="tab-content active" id="overview">
+            <h2>System Overview</h2>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Runs</h3>
+                    <p class="stat-value" id="total-runs">-</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Recent Messages</h3>
+                    <p class="stat-value" id="recent-messages">-</p>
+                </div>
+                <div class="stat-card">
+                    <h3>System Status</h3>
+                    <p class="stat-value" id="system-status">-</p>
+                </div>
+            </div>
+
+            <h3>Recent Runs</h3>
+            <div id="overview-runs">Loading...</div>
+
+            <h3>Latest Messages</h3>
+            <div id="overview-messages">Loading...</div>
+        </div>
+
+        <!-- Runs Tab -->
+        <div class="tab-content" id="runs">
+            <h2>Scrape Runs</h2>
+
+            <div class="controls">
+                <button onclick="loadRuns()">Refresh</button>
+                <select id="runs-limit" onchange="loadRuns()">
+                    <option value="10">10 runs</option>
+                    <option value="20" selected>20 runs</option>
+                    <option value="50">50 runs</option>
+                </select>
+            </div>
+
+            <div id="runs-list">Loading...</div>
+        </div>
+
+        <!-- Messages Tab -->
+        <div class="tab-content" id="messages">
+            <h2>Chat Messages</h2>
+
+            <div class="controls">
+                <button onclick="loadMessages()">Refresh</button>
+                <select id="messages-limit" onchange="loadMessages()">
+                    <option value="20">20 messages</option>
+                    <option value="50" selected>50 messages</option>
+                    <option value="100">100 messages</option>
+                </select>
+                <input
+                    type="text"
+                    id="channel-filter"
+                    placeholder="Filter by channel..."
+                    onchange="loadMessages()"
+                >
+            </div>
+
+            <div id="messages-list">Loading...</div>
+
+            <div class="pagination">
+                <button onclick="previousPage()">Previous</button>
+                <span id="page-info">Page 1</span>
+                <button onclick="nextPage()">Next</button>
+            </div>
+        </div>
+
+        <!-- Search Tab -->
+        <div class="tab-content" id="search">
+            <h2>Search Messages</h2>
+
+            <div class="search-box">
+                <input
+                    type="text"
+                    id="search-query"
+                    placeholder="Enter search query..."
+                    onkeypress="handleSearchEnter(event)"
+                >
+                <button onclick="performSearch()">Search</button>
+            </div>
+
+            <div id="search-results">Enter a search query to find messages</div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Teams Collector v1.0 | <a href="/health" target="_blank">API Health</a></p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

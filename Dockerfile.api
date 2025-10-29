@@ -1,0 +1,34 @@
+# Web API Container
+# Lightweight Node.js för Express server
+
+FROM node:20-alpine
+
+# Sätt arbetskatalog
+WORKDIR /app
+
+# Kopiera package files
+COPY web/package*.json ./
+
+# Installera dependencies
+RUN npm ci --only=production
+
+# Kopiera application kod
+COPY web ./
+
+# Skapa user för säkerhet
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
+USER nodejs
+
+# ⚠️ PORT 3000 är FASTSTÄLLD - ändra inte!
+ENV PORT=3000
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
+
+# Start server
+CMD ["node", "server.js"]

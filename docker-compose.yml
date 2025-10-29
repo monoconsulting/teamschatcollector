@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: teams_collector_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      # ⚠️ ÄNDRA ALDRIG DENNA PORT UTAN TILLÅTELSE!
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - teams_network
+
+  # Web API/UI
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: teams_collector_api
+    restart: unless-stopped
+    environment:
+      # ⚠️ DESSA PORTAR ÄR FASTSTÄLLDA - ÄNDRA ALDRIG!
+      PORT: ${INTERNAL_PORT}
+      DB_HOST: db
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      # ⚠️ KRITISKT: 3040 (public) → 3000 (internal)
+      - "${PUBLIC_PORT}:${INTERNAL_PORT}"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./web:/app:ro
+      - ./data:/app/data:ro
+      - ./logs:/app/logs:ro
+    networks:
+      - teams_network
+
+  # Playwright Scraper
+  scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile.scraper
+    container_name: teams_collector_scraper
+    restart: unless-stopped
+    environment:
+      TEAMS_URL: ${TEAMS_URL}
+      HEADLESS: ${HEADLESS}
+      PLAYWRIGHT_PROFILE: ${PLAYWRIGHT_PROFILE}
+      USER_DATA_DIR: ${USER_DATA_DIR}
+      DB_HOST: db
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SCRAPE_INTERVAL_MINUTES: ${SCRAPE_INTERVAL_MINUTES}
+      PROFILE_SMALL_W: ${PROFILE_SMALL_W}
+      PROFILE_SMALL_H: ${PROFILE_SMALL_H}
+      PROFILE_MEDIUM_W: ${PROFILE_MEDIUM_W}
+      PROFILE_MEDIUM_H: ${PROFILE_MEDIUM_H}
+      PROFILE_LARGE_W: ${PROFILE_LARGE_W}
+      PROFILE_LARGE_H: ${PROFILE_LARGE_H}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./playwright:/app/playwright
+      - ./database:/app/database
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./browser_context:/app/browser_context
+    networks:
+      - teams_network
+    # OBS: Exponera INTE portar för scraper om inte nödvändigt
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  teams_network:
+    driver: bridge

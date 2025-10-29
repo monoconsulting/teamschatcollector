@@ -1,0 +1,36 @@
+# Playwright Scraper Container
+# Baserad på officiell Playwright image med Chromium
+
+FROM mcr.microsoft.com/playwright:v1.47.0-jammy
+
+# Sätt arbetskatalog
+WORKDIR /app
+
+# Kopiera package files
+COPY package*.json ./
+
+# Installera dependencies
+RUN npm ci --only=production
+
+# Kopiera application kod
+COPY playwright ./playwright
+COPY database ./database
+
+# Skapa nödvändiga directories
+RUN mkdir -p /app/data/raw \
+    /app/data/video \
+    /app/data/trace \
+    /app/logs \
+    /app/browser_context \
+    && chmod -R 777 /app/data /app/logs /app/browser_context
+
+# Environment
+ENV NODE_ENV=production
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Health check
+HEALTHCHECK --interval=60s --timeout=10s --start-period=40s --retries=3 \
+    CMD node -e "require('./database/connection').testConnection().then(ok => process.exit(ok ? 0 : 1))" || exit 1
+
+# Default command - startar scheduler
+CMD ["node", "playwright/scripts/scheduler.js"]

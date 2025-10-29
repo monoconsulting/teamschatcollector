@@ -677,7 +677,7 @@ module.exports = {
 ## Task 3.1: Skapa Docker Compose
 
 ### Subtask 3.1.1: Läs existerande docker-compose.yml
-- [ ] **VIKTIGT:** Kontrollera om `docker-compose.yml` redan finns:
+- [x] **VIKTIGT:** Kontrollera om `docker-compose.yml` redan finns:
 
 ```bash
 # Om filen finns - LÄSE DEN FÖRST!
@@ -689,7 +689,7 @@ cat docker-compose.yml
 **⚠️ KRITISK REGEL:** Om `docker-compose.yml` finns - **FRÅGA OM TILLÅTELSE** innan du ändrar!
 
 ### Subtask 3.1.2: Skapa docker-compose.yml (om den inte finns)
-- [ ] Skapa `docker-compose.yml` med EXAKT denna konfiguration:
+- [x] Skapa `docker-compose.yml` med EXAKT denna konfiguration:
 
 ```yaml
 version: '3.8'
@@ -808,7 +808,7 @@ ALDRIG ändra dessa utan explicit tillåtelse!
 ## Task 3.2: Skapa Dockerfiles
 
 ### Subtask 3.2.1: Skapa Dockerfile.scraper
-- [ ] Skapa `Dockerfile.scraper`:
+- [x] Skapa `Dockerfile.scraper`:
 
 ```dockerfile
 # Playwright Scraper Container
@@ -850,7 +850,7 @@ CMD ["node", "playwright/scripts/scheduler.js"]
 ```
 
 ### Subtask 3.2.2: Skapa Dockerfile.api
-- [ ] Skapa `Dockerfile.api`:
+- [x] Skapa `Dockerfile.api`:
 
 ```dockerfile
 # Web API Container
@@ -890,7 +890,7 @@ CMD ["node", "server.js"]
 ```
 
 ### Subtask 3.2.3: Skapa .dockerignore
-- [ ] Skapa `.dockerignore`:
+- [x] Skapa `.dockerignore`:
 
 ```
 # Dependencies
@@ -936,7 +936,7 @@ Thumbs.db
 ## Task 4.1: Skapa Playwright konfiguration
 
 ### Subtask 4.1.1: Läs existerande playwright.config.ts
-- [ ] **VIKTIGT:** Kontrollera om filen finns:
+- [x] **VIKTIGT:** Kontrollera om filen finns:
 
 ```bash
 type playwright/playwright.config.ts
@@ -945,7 +945,7 @@ type playwright/playwright.config.ts
 **⚠️ Om filen finns:** FRÅGA OM TILLÅTELSE innan du ändrar!
 
 ### Subtask 4.1.2: Skapa playwright.config.ts (om den inte finns)
-- [ ] Skapa `playwright/playwright.config.ts`:
+- [x] Skapa `playwright/playwright.config.ts`:
 
 ```typescript
 /**
@@ -1070,7 +1070,7 @@ export default defineConfig({
 ```
 
 ### Subtask 4.1.3: Skapa tsconfig.json
-- [ ] Skapa `playwright/tsconfig.json`:
+- [x] Skapa `playwright/tsconfig.json`:
 
 ```json
 {
@@ -1103,7 +1103,7 @@ export default defineConfig({
 ## Task 4.2: Skapa utility funktioner
 
 ### Subtask 4.2.1: Skapa logger utility
-- [ ] Skapa `playwright/utils/logger.js`:
+- [x] Skapa `playwright/utils/logger.js`:
 
 ```javascript
 /**
@@ -1167,7 +1167,7 @@ module.exports = { createLogger };
 ```
 
 ### Subtask 4.2.2: Skapa profile utility
-- [ ] Skapa `playwright/utils/profiles.js`:
+- [x] Skapa `playwright/utils/profiles.js`:
 
 ```javascript
 /**
@@ -1235,7 +1235,7 @@ module.exports = {
 ```
 
 ### Subtask 4.2.3: Skapa artifact utility
-- [ ] Skapa `playwright/utils/artifacts.js`:
+- [x] Skapa `playwright/utils/artifacts.js`:
 
 ```javascript
 /**
@@ -1350,7 +1350,7 @@ module.exports = {
 ## Task 5.1: Skapa base scraper template
 
 ### Subtask 5.1.1: Skapa base scraper
-- [ ] Skapa `playwright/scripts/base_scraper.js`:
+- [x] Skapa `playwright/scripts/base_scraper.js`:
 
 ```javascript
 /**
@@ -1645,7 +1645,7 @@ module.exports = BaseScraper;
 ```
 
 ### Subtask 5.1.2: Skapa template för konkret scraper
-- [ ] Skapa `playwright/scripts/fetch_teams_chat_medium.js` (template):
+- [x] Skapa `playwright/scripts/fetch_teams_chat_medium.js` (template):
 
 ```javascript
 /**
@@ -1788,14 +1788,14 @@ module.exports = TeamsScraperMedium;
 ```
 
 ### Subtask 5.1.3: Kopiera template för alla profiler
-- [ ] Kopiera och anpassa för small:
+- [x] Kopiera och anpassa för small:
 
 ```bash
 cp playwright/scripts/fetch_teams_chat_medium.js playwright/scripts/fetch_teams_chat_small.js
 # Redigera: ersätt "Medium" med "Small" och 'medium' med 'small' i filen
 ```
 
-- [ ] Kopiera och anpassa för large:
+- [x] Kopiera och anpassa för large:
 
 ```bash
 cp playwright/scripts/fetch_teams_chat_medium.js playwright/scripts/fetch_teams_chat_large.js
@@ -1809,7 +1809,7 @@ cp playwright/scripts/fetch_teams_chat_medium.js playwright/scripts/fetch_teams_
 ## Task 5.2: Skapa conversion guide för codegen
 
 ### Subtask 5.2.1: Skapa conversion instructions
-- [ ] Skapa `playwright/CODEGEN_CONVERSION_GUIDE.md`:
+- [x] Skapa `playwright/CODEGEN_CONVERSION_GUIDE.md`:
 
 ```markdown
 # CODEGEN TO PRODUCTION CONVERSION GUIDE
@@ -2021,7 +2021,7 @@ Kontrollera:
 ## Task 6.1: Skapa Express server
 
 ### Subtask 6.1.1: Skapa server.js
-- [ ] Skapa `web/server.js`:
+- [x] Skapa `web/server.js`:
 
 ```javascript
 /**
