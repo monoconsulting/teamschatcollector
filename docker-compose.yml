@@ -50,7 +50,6 @@ services:
     volumes:
       - ./web:/app:ro
       - ./data:/app/data:ro
-      - ./logs:/app/logs:ro
     networks:
       - teams_network
 
