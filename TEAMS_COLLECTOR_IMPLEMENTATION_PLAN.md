@@ -249,7 +249,7 @@ Thumbs.db
 ## Task 2.1: Skapa SQL schema
 
 ### Subtask 2.1.1: Skapa schema.sql
-- [ ] Skapa `database/schema.sql`:
+- [x] Skapa `database/schema.sql`:
 
 ```sql
 -- Teams Collector Database Schema
@@ -349,7 +349,7 @@ WHERE id = 123;
 ```
 
 ### Subtask 2.1.2: Skapa init script
-- [ ] Skapa `database/init.sql`:
+- [x] Skapa `database/init.sql`:
 
 ```sql
 -- Initial setup script
@@ -367,7 +367,7 @@ SELECT 'Database setup completed successfully!' as status;
 ```
 
 ### Subtask 2.1.3: Skapa migrations-mapp
-- [ ] Skapa `database/migrations/` för framtida uppdateringar:
+- [x] Skapa `database/migrations/` för framtida uppdateringar:
 
 ```bash
 mkdir -p database/migrations
@@ -378,7 +378,7 @@ mkdir -p database/migrations
 ## Task 2.2: Skapa database utilities
 
 ### Subtask 2.2.1: Skapa database connection utility
-- [ ] Skapa `database/connection.js`:
+- [x] Skapa `database/connection.js`:
 
 ```javascript
 /**
@@ -452,7 +452,7 @@ module.exports = {
 ```
 
 ### Subtask 2.2.2: Skapa database operations
-- [ ] Skapa `database/operations.js`:
+- [x] Skapa `database/operations.js`:
 
 ```javascript
 /**
