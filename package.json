@@ -1,0 +1,27 @@
+{
+  "name": "teams-collector",
+  "version": "1.0.0",
+  "description": "MS Teams Chat Collector via Playwright",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"No tests yet\"",
+    "scrape:small": "set PLAYWRIGHT_PROFILE=small&& node playwright/scripts/fetch_teams_chat_small.js",
+    "scrape:medium": "set PLAYWRIGHT_PROFILE=medium&& node playwright/scripts/fetch_teams_chat_medium.js",
+    "scrape:large": "set PLAYWRIGHT_PROFILE=large&& node playwright/scripts/fetch_teams_chat_large.js"
+  },
+  "keywords": ["teams", "scraper", "playwright"],
+  "author": "Mattias Cederlund",
+  "license": "ISC",
+  "dependencies": {
+    "playwright": "^1.47.0",
+    "mysql2": "^3.6.5",
+    "dotenv": "^16.3.1",
+    "node-cron": "^3.0.3",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  }
+}
