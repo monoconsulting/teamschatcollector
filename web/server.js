@@ -14,7 +14,13 @@ const {
     getMessages,
     searchMessages,
     getRuns,
-    getRunById
+    getRunById,
+    getChannels,
+    getTargetChats,
+    getAllTargetChats,
+    addTargetChat,
+    updateTargetChat,
+    deleteTargetChat
 } = require('../database/operations');
 
 const app = express();
@@ -67,6 +73,25 @@ app.get('/api', async (req, res) => {
     } catch (error) {
         console.error('[API] Error in root endpoint:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * GET /channels
+ * Hämta alla kanaler med senaste meddelande
+ */
+app.get('/api/channels', async (req, res) => {
+    try {
+        const channels = await getChannels();
+
+        res.json({
+            count: channels.length,
+            channels: channels
+        });
+
+    } catch (error) {
+        console.error('[API] Error fetching channels:', error);
+        res.status(500).json({ error: 'Failed to fetch channels' });
     }
 });
 
@@ -173,6 +198,127 @@ app.get('/api/runs', async (req, res) => {
 });
 
 /**
+ * GET /target-chats
+ * Hämta alla target chats (admin UI)
+ */
+app.get('/api/target-chats', async (req, res) => {
+    try {
+        const chats = await getAllTargetChats();
+
+        res.json({
+            count: chats.length,
+            chats: chats
+        });
+
+    } catch (error) {
+        console.error('[API] Error fetching target chats:', error);
+        res.status(500).json({ error: 'Failed to fetch target chats' });
+    }
+});
+
+/**
+ * POST /target-chats
+ * Lägg till ny target chat
+ *
+ * Body:
+ * - chat_name: namn på chat/kanal (required)
+ * - chat_type: channel|user|group (default: channel)
+ * - profile: small|medium|large (default: medium)
+ * - is_active: 0|1 (default: 1)
+ * - priority: integer (default: 0)
+ * - notes: fritext (optional)
+ */
+app.post('/api/target-chats', async (req, res) => {
+    try {
+        const { chat_name, chat_type, profile, is_active, priority, notes } = req.body;
+
+        if (!chat_name || chat_name.trim() === '') {
+            return res.status(400).json({ error: 'chat_name is required' });
+        }
+
+        const result = await addTargetChat({
+            chat_name: chat_name.trim(),
+            chat_type,
+            profile,
+            is_active,
+            priority,
+            notes
+        });
+
+        res.status(201).json({
+            success: true,
+            message: `Chat "${result.chat_name}" added successfully`,
+            id: result.id
+        });
+
+    } catch (error) {
+        console.error('[API] Error adding target chat:', error);
+        if (error.message.includes('already exists')) {
+            return res.status(409).json({ error: error.message });
+        }
+        res.status(500).json({ error: 'Failed to add target chat' });
+    }
+});
+
+/**
+ * PUT /target-chats/:id
+ * Uppdatera target chat
+ */
+app.put('/api/target-chats/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { chat_name, chat_type, profile, is_active, priority, notes } = req.body;
+
+        const success = await updateTargetChat(parseInt(id), {
+            chat_name: chat_name?.trim(),
+            chat_type,
+            profile,
+            is_active,
+            priority,
+            notes
+        });
+
+        if (!success) {
+            return res.status(404).json({ error: 'Target chat not found' });
+        }
+
+        res.json({
+            success: true,
+            message: 'Target chat updated successfully'
+        });
+
+    } catch (error) {
+        console.error('[API] Error updating target chat:', error);
+        res.status(500).json({ error: 'Failed to update target chat' });
+    }
+});
+
+/**
+ * DELETE /target-chats/:id
+ * Soft delete av target chat
+ */
+app.delete('/api/target-chats/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const success = await deleteTargetChat(parseInt(id));
+
+        if (!success) {
+            return res.status(404).json({ error: 'Target chat not found' });
+        }
+
+        res.json({
+            success: true,
+            message: 'Target chat deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('[API] Error deleting target chat:', error);
+        res.status(500).json({ error: 'Failed to delete target chat' });
+    }
+});
+
+/**
  * GET /runs/:id
  * Hämta detaljer för specifik run inklusive artifacts
  */
@@ -198,6 +344,93 @@ app.get('/api/runs/:id', async (req, res) => {
     } catch (error) {
         console.error('[API] Error fetching run:', error);
         res.status(500).json({ error: 'Failed to fetch run' });
+    }
+});
+
+/**
+ * GET /runs/:id/log
+ * Hämta logg-innehåll för en specifik run från databasen
+ */
+app.get('/api/runs/:id/log', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { getPool } = require('../database/connection');
+        const pool = getPool();
+
+        const [rows] = await pool.execute(
+            'SELECT log_content FROM scrape_runs WHERE id = ? AND deleted_at IS NULL',
+            [id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Run not found' });
+        }
+
+        const logContent = rows[0].log_content;
+
+        if (!logContent) {
+            return res.json({
+                id: id,
+                log: 'No log content available for this run.'
+            });
+        }
+
+        res.json({
+            id: id,
+            log: logContent
+        });
+
+    } catch (error) {
+        console.error('[API] Error fetching log:', error);
+        res.status(500).json({ error: 'Failed to fetch log' });
+    }
+});
+
+/**
+ * POST /trigger-scrape
+ * Manuellt trigga scraping av alla aktiva target chats
+ *
+ * Body:
+ * - profile: small|medium|large (default: medium)
+ */
+app.post('/api/trigger-scrape', async (req, res) => {
+    try {
+        const { profile = 'medium' } = req.body;
+
+        // Validera profile
+        if (!['small', 'medium', 'large'].includes(profile)) {
+            return res.status(400).json({ error: 'Invalid profile. Must be small, medium, or large.' });
+        }
+
+        console.log(`[API] Manual scrape triggered for profile: ${profile}`);
+
+        // Använd child_process för att exekvera scraper i scraper-containern via Docker exec
+        const { exec } = require('child_process');
+
+        // Kör wrapper-scriptet som tvingar headless mode
+        const command = `docker exec teams_collector_scraper node /app/playwright/scripts/run_manual_scrape.js ${profile}`;
+
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`[API] Scrape execution error:`, error);
+                console.error(`[API] stderr:`, stderr);
+            } else {
+                console.log(`[API] Scrape completed successfully`);
+                console.log(`[API] stdout:`, stdout);
+            }
+        });
+
+        // Returnera omedelbart
+        res.json({
+            success: true,
+            message: `Scraping started for profile: ${profile}`,
+            profile: profile,
+            note: 'Check the Scrape Runs tab for progress'
+        });
+
+    } catch (error) {
+        console.error('[API] Error triggering scrape:', error);
+        res.status(500).json({ error: 'Failed to trigger scrape' });
     }
 });
 

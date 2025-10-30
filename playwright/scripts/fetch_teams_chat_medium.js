@@ -1,14 +1,15 @@
 /**
  * Teams Chat Scraper - Medium Profile
- * Konverterad från: recorded_medium_0-29-5--20_20-06-57.ts
+ * Konverterad från: recorded_medium_0-30-5--20_09-10-22.ts
+ * Uppdaterad: 2025-10-30 (nya Teams UI selektorer)
  *
- * Target Chattar: Tommy Stigsson, Mattias Cederlund
+ * Target Chattar: Laddas dynamiskt från target_chats tabellen
  *
  * Strategi:
  * 1. Navigera till Teams (session state används för autentisering)
- * 2. Öppna Chat-panelen
+ * 2. Öppna Chat-panelen (data-testid="simple-collab-dnd-rail")
  * 3. För varje målchat:
- *    - Öppna chatten
+ *    - Öppna chatten (getByTestId + getByText)
  *    - Scrolla bakåt för att ladda historik (inkrementellt)
  *    - Extrahera alla meddelanden med metadata
  *    - Spara till DB (batch upsert, idempotent)
@@ -16,22 +17,23 @@
 
 const BaseScraper = require('./base_scraper');
 const { getPool } = require('../../database/connection');
+const { getTargetChats, updateTargetChatMetadata } = require('../../database/operations');
 
 /**
  * Centraliserade selectors
- * Källa: codegen recorded_medium_0-29-5--20_20-06-57.ts
+ * Källa: codegen recorded_medium_0-30-5--20_09-10-22.ts
  */
 const SELECTORS = {
-    // Chat navigation
-    CHAT_PANE_LIST: '#chat-pane-list',              // Huvudlista med chattar (rad 21 i codegen)
+    // Chat navigation - UPDATED 2025-10-30
+    CHAT_RAIL: '[data-testid="simple-collab-dnd-rail"]',  // Huvudlista med chattar (rad 21 i codegen)
 
     // Message containers
     MESSAGE_LIST: '[data-tid="virtual-repeat"]',     // Virtualiserad meddelande-container
     MESSAGE_ITEM: '[data-tid="chat-pane-message"]',  // Individuella meddelanden
 
     // Message metadata
-    AUTHOR_ID_PREFIX: '#author-',                    // Author IDs (rad 31, 36, 42 etc i codegen)
-    TIMESTAMP_ID_PREFIX: '#timestamp-',              // Timestamp IDs (rad 34, 37, 39 etc)
+    AUTHOR_ID_PREFIX: '#author-',                    // Author IDs (rad 23, 25, 27 etc i codegen)
+    TIMESTAMP_ID_PREFIX: '#timestamp-',              // Timestamp IDs (rad 44 etc)
 
     // Alternativa selectors
     MESSAGE_TEXT_CONTAINER: '[data-tid="message-body"]',
@@ -47,14 +49,37 @@ class TeamsScraperMedium extends BaseScraper {
     constructor() {
         super('medium');
 
-        // Målchattar att skrapa
-        // OBS: Använd exakta namn från Teams UI (kolla i codegen-filen)
-        this.targetChats = [
-            'ÖSTHAMMAR - SERVICEFÖNSTER'  // Från recorded_medium_0-29-5--20_20-06-57.ts rad 22
-        ];
+        // Målchattar laddas nu från databasen istället för hårdkodad lista
+        this.targetChats = [];
 
         // Max scrolls för medium profile (från .prompts/convert.prompt.md)
         this.maxScrolls = parseInt(process.env.MAX_SCROLLS) || 15;
+    }
+
+    /**
+     * Laddar target chats från databasen för denna profil
+     */
+    async loadTargetChats() {
+        try {
+            this.logger.info('Loading target chats from database');
+            const chats = await getTargetChats('medium');
+
+            this.targetChats = chats.map(chat => chat.chat_name);
+
+            this.logger.info(`Loaded ${this.targetChats.length} target chats:`, this.targetChats);
+
+            if (this.targetChats.length === 0) {
+                this.logger.warn('No active target chats found for medium profile!');
+            }
+
+            return this.targetChats;
+
+        } catch (error) {
+            this.logger.error('Failed to load target chats from database', {
+                error: error.message
+            });
+            throw error;
+        }
     }
 
     /**
@@ -96,14 +121,15 @@ class TeamsScraperMedium extends BaseScraper {
         try {
             this.logger.info('Opening chat pane');
 
-            // Vänta på att chat-listan finns
-            await this.page.waitForSelector(SELECTORS.CHAT_PANE_LIST, {
+            // Vänta på att chat-rail finns (uppdaterad selektor 2025-10-30)
+            await this.page.waitForSelector(SELECTORS.CHAT_RAIL, {
                 timeout: 30000,
                 state: 'visible'
             });
 
-            // Klicka på chat-panelen för att säkerställa den är aktiv
-            await this.page.locator(SELECTORS.CHAT_PANE_LIST).click();
+            this.logger.info('Chat rail loaded successfully');
+
+            // Kort paus för att säkerställa att chatten är redo
             await this.page.waitForTimeout(1000);
 
             this.logger.info('Chat pane opened successfully');
@@ -123,13 +149,15 @@ class TeamsScraperMedium extends BaseScraper {
 
     /**
      * Öppnar en specifik chat baserat på namn
+     * Uppdaterad 2025-10-30 för nya Teams UI selektorer
      */
     async openChat(chatName) {
         try {
             this.logger.info(`Opening chat: "${chatName}"`);
 
-            // Använd getByTitle från codegen (rad 22)
-            const chatElement = this.page.getByTitle(chatName, { exact: false });
+            // Använd nya selektorn: getByTestId('simple-collab-dnd-rail').getByText(chatName)
+            const chatRail = this.page.getByTestId('simple-collab-dnd-rail');
+            const chatElement = chatRail.getByText(chatName, { exact: false });
 
             // Kolla om chatten finns
             const count = await chatElement.count();
@@ -145,9 +173,14 @@ class TeamsScraperMedium extends BaseScraper {
             await this.page.waitForTimeout(2000);
 
             // Verifiera att chat-headern finns
-            const headerVisible = await this.page.locator(SELECTORS.CHAT_HEADER).isVisible();
-            if (!headerVisible) {
-                this.logger.warn(`Chat header not visible for "${chatName}"`);
+            try {
+                const headerVisible = await this.page.locator(SELECTORS.CHAT_HEADER).isVisible();
+                if (!headerVisible) {
+                    this.logger.warn(`Chat header not visible for "${chatName}"`);
+                }
+            } catch (headerError) {
+                // Chat header kanske inte finns i nya UI, fortsätt ändå
+                this.logger.warn(`Could not verify chat header for "${chatName}"`);
             }
 
             this.logger.info(`Chat "${chatName}" opened successfully`);
@@ -356,12 +389,20 @@ class TeamsScraperMedium extends BaseScraper {
      * Huvudmetod för att extrahera meddelanden från alla målchattar
      */
     async extractMessages() {
-        this.logger.info('Starting message extraction (MEDIUM profile)', {
-            targetChats: this.targetChats,
-            maxScrolls: this.maxScrolls
-        });
-
         try {
+            // 0. Ladda target chats från databasen
+            await this.loadTargetChats();
+
+            if (this.targetChats.length === 0) {
+                this.logger.warn('No target chats configured - exiting');
+                return;
+            }
+
+            this.logger.info('Starting message extraction (MEDIUM profile)', {
+                targetChats: this.targetChats,
+                maxScrolls: this.maxScrolls
+            });
+
             // 1. Öppna chat-panelen
             await this.openChatPane();
 
@@ -393,6 +434,15 @@ class TeamsScraperMedium extends BaseScraper {
                         messagesExtracted: chatMessages.length,
                         totalMessages: this.messages.length
                     });
+
+                    // 2f. Uppdatera metadata i target_chats tabellen
+                    try {
+                        await updateTargetChatMetadata(chatName, chatMessages.length);
+                    } catch (metaError) {
+                        this.logger.warn(`Failed to update metadata for "${chatName}"`, {
+                            error: metaError.message
+                        });
+                    }
 
                     // Paus mellan chattar för att undvika rate limits
                     await this.page.waitForTimeout(2000);

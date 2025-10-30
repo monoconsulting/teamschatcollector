@@ -34,8 +34,15 @@ class BaseScraper {
 
     /**
      * Genererar unikt run ID
+     * Om RUN_ID finns i env (från scheduler), använd det istället
      */
     generateRunId() {
+        // Använd RUN_ID från scheduler om tillgänglig
+        if (process.env.RUN_ID) {
+            return process.env.RUN_ID;
+        }
+
+        // Annars generera nytt ID (för manuell körning)
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         return `run_${this.profileName}_${timestamp}`;
     }
@@ -50,12 +57,15 @@ class BaseScraper {
                 headless: process.env.HEADLESS
             });
 
-            // Skapa scrape run i DB
-            await createScrapeRun(
-                this.runId,
-                this.profileName,
-                process.env.HEADLESS === 'true'
-            );
+            // Skapa scrape run i DB endast om RUN_ID inte kommer från scheduler
+            // (scheduler skapar redan posten)
+            if (!process.env.RUN_ID) {
+                await createScrapeRun(
+                    this.runId,
+                    this.profileName,
+                    process.env.HEADLESS === 'true'
+                );
+            }
 
             // Starta browser
             this.browser = await chromium.launch({

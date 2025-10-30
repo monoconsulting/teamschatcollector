@@ -32,7 +32,8 @@ async function updateScrapeRun(runId, data) {
         error_message,
         log_path,
         video_path,
-        trace_path
+        trace_path,
+        log_content
     } = data;
 
     const query = `
@@ -44,7 +45,8 @@ async function updateScrapeRun(runId, data) {
             error_message = COALESCE(?, error_message),
             log_path = COALESCE(?, log_path),
             video_path = COALESCE(?, video_path),
-            trace_path = COALESCE(?, trace_path)
+            trace_path = COALESCE(?, trace_path),
+            log_content = COALESCE(?, log_content)
         WHERE id = ?
     `;
 
@@ -56,6 +58,7 @@ async function updateScrapeRun(runId, data) {
         log_path,
         video_path,
         trace_path,
+        log_content,
         runId
     ]);
 
@@ -156,6 +159,11 @@ async function getMessages(options = {}) {
     } = options;
 
     const pool = getPool();
+
+    // Säkerställ att limit och offset är integers och safe
+    const safeLimit = Math.max(1, Math.min(1000, parseInt(limit) || 50));
+    const safeOffset = Math.max(0, parseInt(offset) || 0);
+
     let query = `
         SELECT
             id, sender, message_text, timestamp,
@@ -176,10 +184,11 @@ async function getMessages(options = {}) {
         params.push(channel_name);
     }
 
-    query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    query += ` ORDER BY timestamp DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`;
 
-    const [rows] = await pool.execute(query, params);
+    const [rows] = params.length > 0
+        ? await pool.execute(query, params)
+        : await pool.query(query);
     return rows;
 }
 
@@ -188,6 +197,10 @@ async function getMessages(options = {}) {
  */
 async function searchMessages(searchTerm, limit = 50) {
     const pool = getPool();
+
+    // Säkerställ att limit är integer och safe
+    const safeLimit = Math.max(1, Math.min(1000, parseInt(limit) || 50));
+
     const query = `
         SELECT
             id, sender, message_text, timestamp,
@@ -196,10 +209,10 @@ async function searchMessages(searchTerm, limit = 50) {
         WHERE MATCH(message_text) AGAINST(? IN NATURAL LANGUAGE MODE)
         AND deleted_at IS NULL
         ORDER BY timestamp DESC
-        LIMIT ?
+        LIMIT ${safeLimit}
     `;
 
-    const [rows] = await pool.execute(query, [searchTerm, limit]);
+    const [rows] = await pool.execute(query, [searchTerm]);
     return rows;
 }
 
@@ -208,6 +221,11 @@ async function searchMessages(searchTerm, limit = 50) {
  */
 async function getRuns(limit = 20, offset = 0) {
     const pool = getPool();
+
+    // Säkerställ att limit och offset är integers och safe
+    const safeLimit = Math.max(1, Math.min(1000, parseInt(limit) || 20));
+    const safeOffset = Math.max(0, parseInt(offset) || 0);
+
     const query = `
         SELECT
             id, started_at, completed_at, status,
@@ -216,10 +234,10 @@ async function getRuns(limit = 20, offset = 0) {
         FROM scrape_runs
         WHERE deleted_at IS NULL
         ORDER BY started_at DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${safeLimit} OFFSET ${safeOffset}
     `;
 
-    const [rows] = await pool.execute(query, [limit, offset]);
+    const [rows] = await pool.query(query);
     return rows;
 }
 
@@ -236,6 +254,201 @@ async function getRunById(runId) {
     return rows[0] || null;
 }
 
+/**
+ * Hämtar alla kanaler med senaste meddelande per kanal
+ */
+async function getChannels() {
+    const pool = getPool();
+    const query = `
+        SELECT
+            channel_name,
+            COUNT(*) as message_count,
+            MAX(timestamp) as last_message_at,
+            (SELECT sender FROM chat_messages cm2
+             WHERE cm2.channel_name = cm.channel_name
+             AND cm2.deleted_at IS NULL
+             ORDER BY cm2.timestamp DESC LIMIT 1) as last_sender,
+            (SELECT message_text FROM chat_messages cm3
+             WHERE cm3.channel_name = cm.channel_name
+             AND cm3.deleted_at IS NULL
+             ORDER BY cm3.timestamp DESC LIMIT 1) as last_message
+        FROM chat_messages cm
+        WHERE deleted_at IS NULL
+        GROUP BY channel_name
+        ORDER BY last_message_at DESC
+    `;
+
+    const [rows] = await pool.query(query);
+    return rows;
+}
+
+/**
+ * TARGET CHATS MANAGEMENT
+ */
+
+/**
+ * Hämtar alla aktiva target chats för en specifik profil
+ */
+async function getTargetChats(profile = null) {
+    const pool = getPool();
+    let query = `
+        SELECT
+            id, chat_name, chat_type, profile,
+            is_active, priority, notes,
+            last_scraped_at, total_messages,
+            created_at, updated_at
+        FROM target_chats
+        WHERE deleted_at IS NULL AND is_active = 1
+    `;
+
+    const params = [];
+
+    if (profile) {
+        query += ' AND profile = ?';
+        params.push(profile);
+    }
+
+    query += ' ORDER BY priority DESC, chat_name ASC';
+
+    const [rows] = params.length > 0
+        ? await pool.execute(query, params)
+        : await pool.query(query);
+    return rows;
+}
+
+/**
+ * Hämtar alla target chats (inklusive inaktiva) för admin UI
+ */
+async function getAllTargetChats() {
+    const pool = getPool();
+    const query = `
+        SELECT
+            id, chat_name, chat_type, profile,
+            is_active, priority, notes,
+            last_scraped_at, total_messages,
+            created_at, updated_at
+        FROM target_chats
+        WHERE deleted_at IS NULL
+        ORDER BY is_active DESC, priority DESC, chat_name ASC
+    `;
+
+    const [rows] = await pool.query(query);
+    return rows;
+}
+
+/**
+ * Lägger till en ny target chat
+ */
+async function addTargetChat(data) {
+    const pool = getPool();
+    const {
+        chat_name,
+        chat_type = 'channel',
+        profile = 'medium',
+        is_active = 1,
+        priority = 0,
+        notes = null
+    } = data;
+
+    const query = `
+        INSERT INTO target_chats
+        (chat_name, chat_type, profile, is_active, priority, notes)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    try {
+        const [result] = await pool.execute(query, [
+            chat_name,
+            chat_type,
+            profile,
+            is_active ? 1 : 0,
+            priority,
+            notes
+        ]);
+
+        console.log(`[DB] Added target chat: ${chat_name}`);
+        return { id: result.insertId, chat_name };
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            throw new Error(`Chat "${chat_name}" already exists`);
+        }
+        throw error;
+    }
+}
+
+/**
+ * Uppdaterar en target chat
+ */
+async function updateTargetChat(id, data) {
+    const pool = getPool();
+    const {
+        chat_name,
+        chat_type,
+        profile,
+        is_active,
+        priority,
+        notes
+    } = data;
+
+    const query = `
+        UPDATE target_chats
+        SET
+            chat_name = COALESCE(?, chat_name),
+            chat_type = COALESCE(?, chat_type),
+            profile = COALESCE(?, profile),
+            is_active = COALESCE(?, is_active),
+            priority = COALESCE(?, priority),
+            notes = COALESCE(?, notes)
+        WHERE id = ? AND deleted_at IS NULL
+    `;
+
+    const [result] = await pool.execute(query, [
+        chat_name,
+        chat_type,
+        profile,
+        is_active !== undefined ? (is_active ? 1 : 0) : null,
+        priority,
+        notes,
+        id
+    ]);
+
+    console.log(`[DB] Updated target chat ID: ${id}`);
+    return result.affectedRows > 0;
+}
+
+/**
+ * Uppdaterar scraping metadata för en chat
+ */
+async function updateTargetChatMetadata(chatName, messageCount) {
+    const pool = getPool();
+    const query = `
+        UPDATE target_chats
+        SET
+            last_scraped_at = NOW(),
+            total_messages = ?
+        WHERE chat_name = ? AND deleted_at IS NULL
+    `;
+
+    await pool.execute(query, [messageCount, chatName]);
+    console.log(`[DB] Updated metadata for chat: ${chatName} (${messageCount} messages)`);
+}
+
+/**
+ * Soft delete av target chat
+ */
+async function deleteTargetChat(id) {
+    const pool = getPool();
+    const query = `
+        UPDATE target_chats
+        SET deleted_at = NOW()
+        WHERE id = ? AND deleted_at IS NULL
+    `;
+
+    const [result] = await pool.execute(query, [id]);
+    console.log(`[DB] Soft deleted target chat ID: ${id}`);
+    return result.affectedRows > 0;
+}
+
 module.exports = {
     createScrapeRun,
     updateScrapeRun,
@@ -245,5 +458,12 @@ module.exports = {
     getMessages,
     searchMessages,
     getRuns,
-    getRunById
+    getRunById,
+    getChannels,
+    getTargetChats,
+    getAllTargetChats,
+    addTargetChat,
+    updateTargetChat,
+    updateTargetChatMetadata,
+    deleteTargetChat
 };

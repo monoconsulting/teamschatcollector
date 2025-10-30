@@ -26,7 +26,9 @@ function getPool() {
         connectionLimit: 10,
         queueLimit: 0,
         enableKeepAlive: true,
-        keepAliveInitialDelay: 0
+        keepAliveInitialDelay: 0,
+        charset: 'utf8mb4',
+        timezone: '+00:00'
     });
 
     console.log(`[DB] Connection pool created for ${process.env.DB_HOST}:${process.env.DB_PORT}`);

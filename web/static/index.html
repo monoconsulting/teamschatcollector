@@ -17,6 +17,7 @@
             <button class="tab-button active" data-tab="overview">Overview</button>
             <button class="tab-button" data-tab="runs">Scrape Runs</button>
             <button class="tab-button" data-tab="messages">Messages</button>
+            <button class="tab-button" data-tab="target-chats">Target Chats</button>
             <button class="tab-button" data-tab="search">Search</button>
         </nav>
 
@@ -66,28 +67,106 @@
         <div class="tab-content" id="messages">
             <h2>Chat Messages</h2>
 
+            <!-- Channels View -->
+            <div id="channels-view">
+                <div class="controls">
+                    <button onclick="loadChannels()">Refresh Channels</button>
+                </div>
+                <div id="channels-list">Loading channels...</div>
+            </div>
+
+            <!-- Messages View (hidden initially) -->
+            <div id="messages-view" style="display: none;">
+                <div class="controls">
+                    <button onclick="backToChannels()">← Back to Channels</button>
+                    <button onclick="loadMessagesForChannel()">Refresh</button>
+                    <select id="messages-limit" onchange="loadMessagesForChannel()">
+                        <option value="20">20 messages</option>
+                        <option value="50" selected>50 messages</option>
+                        <option value="100">100 messages</option>
+                    </select>
+                </div>
+
+                <h3 id="channel-name-header"></h3>
+
+                <div id="messages-list">Loading...</div>
+
+                <div class="pagination">
+                    <button onclick="previousPage()">Previous</button>
+                    <span id="page-info">Page 1</span>
+                    <button onclick="nextPage()">Next</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Target Chats Tab -->
+        <div class="tab-content" id="target-chats">
+            <h2>Manage Target Chats</h2>
+            <p class="subtitle">Add or remove chats/channels to scrape</p>
+
+            <!-- Manual Scrape Trigger -->
+            <div class="scrape-trigger-box">
+                <h3>▶ Run Scraper Now</h3>
+                <p>Manually trigger scraping of all active target chats (runs in headless mode)</p>
+                <div class="scrape-trigger-controls">
+                    <select id="scrape-profile">
+                        <option value="small">Small (1280x720)</option>
+                        <option value="medium" selected>Medium (1600x900)</option>
+                        <option value="large">Large (1920x1080)</option>
+                    </select>
+                    <button onclick="triggerManualScrape()" class="btn-primary btn-scrape">
+                        ▶ Start Scraping
+                    </button>
+                </div>
+                <div id="scrape-status" class="scrape-status"></div>
+            </div>
+
+            <!-- Add New Chat Form -->
+            <div class="add-chat-form">
+                <h3>Add New Chat</h3>
+                <div class="form-group">
+                    <label for="new-chat-name">Chat/Channel Name *</label>
+                    <input
+                        type="text"
+                        id="new-chat-name"
+                        placeholder="E.g., 'Tommy Stigsson' or 'IT Support - General'"
+                        required
+                    >
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new-chat-type">Type</label>
+                        <select id="new-chat-type">
+                            <option value="channel">Channel</option>
+                            <option value="user">User Chat</option>
+                            <option value="group">Group Chat</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-chat-profile">Profile</label>
+                        <select id="new-chat-profile">
+                            <option value="small">Small (1280x720)</option>
+                            <option value="medium" selected>Medium (1600x900)</option>
+                            <option value="large">Large (1920x1080)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-chat-priority">Priority</label>
+                        <input type="number" id="new-chat-priority" value="0" min="0" max="100">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="new-chat-notes">Notes (optional)</label>
+                    <textarea id="new-chat-notes" rows="2" placeholder="Any notes about this chat..."></textarea>
+                </div>
+                <button onclick="addNewTargetChat()" class="btn-primary">Add Chat</button>
+            </div>
+
+            <!-- Target Chats List -->
             <div class="controls">
-                <button onclick="loadMessages()">Refresh</button>
-                <select id="messages-limit" onchange="loadMessages()">
-                    <option value="20">20 messages</option>
-                    <option value="50" selected>50 messages</option>
-                    <option value="100">100 messages</option>
-                </select>
-                <input
-                    type="text"
-                    id="channel-filter"
-                    placeholder="Filter by channel..."
-                    onchange="loadMessages()"
-                >
+                <button onclick="loadTargetChats()">Refresh</button>
             </div>
-
-            <div id="messages-list">Loading...</div>
-
-            <div class="pagination">
-                <button onclick="previousPage()">Previous</button>
-                <span id="page-info">Page 1</span>
-                <button onclick="nextPage()">Next</button>
-            </div>
+            <div id="target-chats-list">Loading...</div>
         </div>
 
         <!-- Search Tab -->
@@ -111,6 +190,19 @@
     <footer>
         <p>Teams Collector v1.0 | <a href="/health" target="_blank">API Health</a></p>
     </footer>
+
+    <!-- Log Modal -->
+    <div id="log-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Run Log</h3>
+                <span class="close" onclick="closeLogModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <pre id="log-content">Loading...</pre>
+            </div>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>

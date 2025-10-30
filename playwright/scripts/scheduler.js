@@ -70,7 +70,7 @@ async function createScrapeRun(runId, profile, headless) {
 /**
  * Update scrape run record with completion status
  */
-async function updateScrapeRun(runId, status, messageCount = 0, logPath = null, videoPath = null, tracePath = null) {
+async function updateScrapeRun(runId, status, messageCount = 0, logPath = null, videoPath = null, tracePath = null, logContent = null) {
   if (!dbConnection) {
     console.warn('[Scheduler] No database connection, skipping run record update');
     return;
@@ -80,9 +80,9 @@ async function updateScrapeRun(runId, status, messageCount = 0, logPath = null, 
     await dbConnection.execute(
       `UPDATE scrape_runs
        SET completed_at = NOW(), status = ?, message_count = ?,
-           log_path = ?, video_path = ?, trace_path = ?
+           log_path = ?, video_path = ?, trace_path = ?, log_content = ?
        WHERE id = ?`,
-      [status, messageCount, logPath, videoPath, tracePath, runId]
+      [status, messageCount, logPath, videoPath, tracePath, logContent, runId]
     );
     console.log(`[Scheduler] Updated scrape run record: ${runId} - ${status}`);
   } catch (error) {
@@ -122,6 +122,7 @@ async function runScraper(profile, retryCount = 0) {
 
   return new Promise((resolve) => {
     const logStream = require('fs').createWriteStream(logPath, { flags: 'a' });
+    let logBuffer = ''; // Samla all log output
 
     const child = spawn('node', [scriptPath], {
       env: {
@@ -138,12 +139,14 @@ async function runScraper(profile, retryCount = 0) {
       const message = data.toString();
       process.stdout.write(message);
       logStream.write(message);
+      logBuffer += message; // Lägg till i buffer
     });
 
     child.stderr.on('data', (data) => {
       const message = data.toString();
       process.stderr.write(message);
       logStream.write(message);
+      logBuffer += message; // Lägg till i buffer
     });
 
     child.on('close', async (code) => {
@@ -193,8 +196,8 @@ async function runScraper(profile, retryCount = 0) {
         console.warn('[Scheduler] Could not read output files:', error.message);
       }
 
-      // Update database record
-      await updateScrapeRun(runId, status, messageCount, logPath, videoPath, tracePath);
+      // Update database record with log content
+      await updateScrapeRun(runId, status, messageCount, logPath, videoPath, tracePath, logBuffer);
 
       // Handle retry on failure
       if (!success && retryCount < MAX_RETRIES) {
@@ -212,7 +215,8 @@ async function runScraper(profile, retryCount = 0) {
     child.on('error', async (error) => {
       console.error('[Scheduler] Failed to spawn scraper process:', error.message);
       logStream.end();
-      await updateScrapeRun(runId, 'failed', 0, logPath, null, null);
+      logBuffer += `\nERROR: Failed to spawn scraper: ${error.message}\n`;
+      await updateScrapeRun(runId, 'failed', 0, logPath, null, null, logBuffer);
 
       // Retry on spawn error
       if (retryCount < MAX_RETRIES) {

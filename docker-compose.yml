@@ -50,6 +50,7 @@ services:
     volumes:
       - ./web:/app:ro
       - ./data:/app/data:ro
+      - /var/run/docker.sock:/var/run/docker.sock  # För att köra docker exec kommandon
     networks:
       - teams_network
 
@@ -62,9 +63,9 @@ services:
     restart: unless-stopped
     environment:
       TEAMS_URL: ${TEAMS_URL}
-      HEADLESS: ${HEADLESS}
+      HEADLESS: "true"
       PLAYWRIGHT_PROFILE: ${PLAYWRIGHT_PROFILE}
-      USER_DATA_DIR: ${USER_DATA_DIR}
+      USER_DATA_DIR: "/app/browser_context"
       DB_HOST: db
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
